@@ -33,6 +33,14 @@
 #define PLIC_SPRIORITY(hart) (PLIC + 0x201000 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC + 0x201004 + (hart)*0x2000)
 
+// pci config space
+#define PCIE_ECAM_BASE 0x30000000UL
+#define PCIE_ECAM_SIZE 0x10000000UL
+
+// pci mmio space
+#define PCIE_MMIO_BASE 0x40000000UL
+#define PCIE_MMIO_SIZE 0x40000000UL
+
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.

@@ -33,6 +33,10 @@ kvmmake(void)
   // PLIC
   kvmmap(kpgtbl, PLIC, PLIC, 0x4000000, PTE_R | PTE_W);
 
+   // PCI
+  kvmmap(kpgtbl, PCIE_ECAM_BASE, PCIE_ECAM_BASE, PCIE_ECAM_SIZE, PTE_R | PTE_W);
+  kvmmap(kpgtbl, PCIE_MMIO_BASE, PCIE_MMIO_BASE, PCIE_MMIO_SIZE, PTE_R | PTE_W);
+
   // map kernel text executable and read-only.
   kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)etext-KERNBASE, PTE_R | PTE_X);
 
