@@ -18,6 +18,14 @@ static const char *pci_class[] =
   [0x6] = "Bridge device",
 };
 
+struct pci_dev_info {
+  uint16 vendor_id;
+  uint16 device_id;
+  void (*init)(struct pci_dev *);
+} dev_info[] = {
+  {0x8086, 0x100E, &e1000init},
+};
+
 struct pci_dev pci_devices[NPCIDEV];
 uint num_pci_devs = 0;
 
@@ -25,7 +33,6 @@ uint32
 pci_config_read(uint bus, uint device, uint function, uint offset)
 {
   uint32 off;
-  
   off = (bus << 20) | (device << 15) | (function << 12) | offset;
   return mem_read32((volatile void *) (PCIE_ECAM_BASE + off));
 }
@@ -34,16 +41,14 @@ void
 pci_config_write(uint bus, uint device, uint function, uint offset, uint32 value)
 {
   uint32 off;
-  
   off = (bus << 20) | (device << 15) | (function << 12) | offset;
   mem_write32((volatile void *) (PCIE_ECAM_BASE + off), value);
 }
 
-void
+static void
 list_dev()
 {
   uint i;
-
   for (i = 0; i < num_pci_devs; i++) {
     printf("PCI: Bus %d Device %d Function %d Vendor ID 0x%x Device ID 0x%x Class Code 0x%x (%s)\n",
            pci_devices[i].bus,
@@ -56,37 +61,46 @@ list_dev()
   }
 }
 
-uint16
-get_vendorid(uint bus, uint device, uint function)
-{
-  uint32 conf;
-
-  conf = pci_config_read(bus, device, function, PCI_VID_DID);
-  return conf & 0xFFFF;
-}
-
-uint32
+static uint32
 get_viddid(uint bus, uint device, uint function)
 {
   uint32 conf;
-
   conf = pci_config_read(bus, device, function, PCI_VID_DID);
   return conf;
 }
 
-uint8
+static uint8
 get_classcode(uint bus, uint device, uint function)
 {
   uint32 conf;
-
   conf = pci_config_read(bus, device, function, PCI_CLASS);
   return (conf >> 24) & 0xFF;
 }
 
+static uint32
+get_bar0(uint bus, uint device, uint function)
+{
+  uint32 conf;
+  conf = pci_config_read(bus, device, function, PCI_BAR0);
+  return conf;
+}
+
+static struct pci_dev_info *lookup_dev_info(uint vendor_id, uint device_id)
+{
+  uint i;
+  for (i = 0; i < sizeof(dev_info) / sizeof(struct pci_dev_info); i++) {
+    if (dev_info[i].vendor_id == vendor_id && dev_info[i].device_id == device_id) {
+      return &dev_info[i];
+    }
+  }
+  return 0;
+}
 
 void
 scan_bus(uint bus)
 {
+  struct pci_dev *dev;
+  struct pci_dev_info *info;
   uint8 device, function;
   uint16 vendor_id, device_id;
   uint32 conf;
@@ -98,14 +112,18 @@ scan_bus(uint bus)
       device_id = (conf >> 16) & 0xFFFF;
       if (vendor_id == 0xFFFF) continue;
 
-      pci_devices[num_pci_devs].bus = bus;
-      pci_devices[num_pci_devs].device = device;
-      pci_devices[num_pci_devs].function = function;
-      pci_devices[num_pci_devs].vendor_id = vendor_id;
-      pci_devices[num_pci_devs].device_id = device_id;
-      pci_devices[num_pci_devs].class_code = get_classcode(bus, device, function);
-      pci_devices[num_pci_devs].bar0 = pci_config_read(bus, device, function, PCI_BAR0);
-      if (vendor_id == 0x8086 && device_id == 0x100E) e1000init(&pci_devices[num_pci_devs]);
+      dev = &pci_devices[num_pci_devs];
+      dev->bus = bus;
+      dev->device = device;
+      dev->function = function;
+      dev->vendor_id = vendor_id;
+      dev->device_id = device_id;
+      dev->class_code = get_classcode(bus, device, function);
+      dev->bar0 = get_bar0(bus, device, function);
+      
+      info = lookup_dev_info(vendor_id, device_id);
+      if (info != 0) info->init(dev);
+
       num_pci_devs++;
 
       if (NPCIDEV <= num_pci_devs) {
