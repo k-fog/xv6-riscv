@@ -13,3 +13,4 @@
 #define MAXPATH      128   // maximum file path name
 #define USERSTACK    1     // user stack pages
 
+#define NPCIDEV 32   // maximum number of PCI devices
