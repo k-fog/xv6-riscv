@@ -346,28 +346,6 @@ sfence_vma()
   asm volatile("sfence.vma zero, zero");
 }
 
-static inline void
-mem_write32(volatile void *addr, uint32 val)
-{
-  asm volatile(
-    "sw %0, 0(%1)"
-    : 
-    : "r" (val), "r" (addr)
-    : "memory");
-}
-
-static inline uint32
-mem_read32(volatile void *addr)
-{
-  uint32 val;
-  asm volatile(
-    "lw %0, 0(%1)"
-    : "=r" (val)
-    : "r" (addr)
-    : "memory");
-  return val;
-}
-
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
 

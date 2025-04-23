@@ -1,1 +1,0 @@
-void e1000init(struct pci_dev *dev);

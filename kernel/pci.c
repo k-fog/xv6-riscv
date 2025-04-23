@@ -4,7 +4,6 @@
 #include "param.h"
 #include "memlayout.h"
 #include "pci.h"
-#include "e1000.h"
 
 #define NPCI_CLASSES 7
 static const char *pci_class[] =
@@ -34,7 +33,7 @@ pci_config_read(uint bus, uint device, uint function, uint offset)
 {
   uint32 off;
   off = (bus << 20) | (device << 15) | (function << 12) | offset;
-  return mem_read32((volatile void *) (PCIE_ECAM_BASE + off));
+  return *(volatile uint32 *)(PCIE_ECAM_BASE + off);
 }
 
 void
@@ -42,7 +41,8 @@ pci_config_write(uint bus, uint device, uint function, uint offset, uint32 value
 {
   uint32 off;
   off = (bus << 20) | (device << 15) | (function << 12) | offset;
-  mem_write32((volatile void *) (PCIE_ECAM_BASE + off), value);
+  volatile uint32 *addr = (volatile uint32 *) (PCIE_ECAM_BASE + off);
+  *addr = value;
 }
 
 static void
@@ -77,15 +77,8 @@ get_classcode(uint bus, uint device, uint function)
   return (conf >> 24) & 0xFF;
 }
 
-static uint32
-get_bar0(uint bus, uint device, uint function)
-{
-  uint32 conf;
-  conf = pci_config_read(bus, device, function, PCI_BAR0);
-  return conf;
-}
-
-static struct pci_dev_info *lookup_dev_info(uint vendor_id, uint device_id)
+static struct pci_dev_info
+*lookup_dev_info(uint vendor_id, uint device_id)
 {
   uint i;
   for (i = 0; i < sizeof(dev_info) / sizeof(struct pci_dev_info); i++) {
@@ -119,10 +112,19 @@ scan_bus(uint bus)
       dev->vendor_id = vendor_id;
       dev->device_id = device_id;
       dev->class_code = get_classcode(bus, device, function);
-      dev->bar0 = get_bar0(bus, device, function);
       
       info = lookup_dev_info(vendor_id, device_id);
-      if (info != 0) info->init(dev);
+      if (info != 0) {
+        // TODO: prepare memory for multiple devices
+
+        // pci_config_write(bus, device, function, PCI_BAR0, 0xFFFFFFFF);
+        // bar_size = get_bar0(bus, device, function);
+        // bar_size = ~(bar_size & ~0xF) + 1;
+
+        pci_config_write(bus, device, function, PCI_BAR0, PCIE_MMIO_BASE);
+        dev->regs = (volatile uint32 *) PCIE_MMIO_BASE;
+        info->init(dev);
+      }
 
       num_pci_devs++;
 
@@ -132,6 +134,14 @@ scan_bus(uint bus)
       }
     }
   }
+}
+
+void
+pci_func_enable(struct pci_dev *dev)
+{
+  pci_config_write(dev->bus, dev->device, dev->function, PCI_STA_CMD, 
+                   PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE | PCI_COMMAND_MASTER_ENABLE);
+  __sync_synchronize();
 }
 
 void
