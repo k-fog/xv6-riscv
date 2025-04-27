@@ -1,5 +1,5 @@
 #define PCI_VID_DID 0x00
-#define PCI_STA_CMD 0x04
+#define PCI_CMD_STA 0x04
 #define PCI_CLASS   0x08
 #define PCI_BAR0    0x10
 #define PCI_BAR1    0x14

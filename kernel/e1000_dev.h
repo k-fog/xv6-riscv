@@ -29,6 +29,8 @@
 #define E1000_RA       (0x05400/4)  /* Receive Address - RW Array */
 
 /* Device Control */
+#define E1000_CTL_FD      0x00000001    /* full duplex */
+#define E1000_CTL_ASDE    0x00000020    /* auto speed */
 #define E1000_CTL_SLU     0x00000040    /* set link up */
 #define E1000_CTL_FRCSPD  0x00000800    /* force speed */
 #define E1000_CTL_FRCDPLX 0x00001000    /* force duplex */

@@ -115,12 +115,6 @@ scan_bus(uint bus)
       
       info = lookup_dev_info(vendor_id, device_id);
       if (info != 0) {
-        // TODO: prepare memory for multiple devices
-
-        // pci_config_write(bus, device, function, PCI_BAR0, 0xFFFFFFFF);
-        // bar_size = get_bar0(bus, device, function);
-        // bar_size = ~(bar_size & ~0xF) + 1;
-
         pci_config_write(bus, device, function, PCI_BAR0, PCIE_MMIO_BASE);
         dev->regs = (volatile uint32 *) PCIE_MMIO_BASE;
         info->init(dev);
@@ -139,7 +133,7 @@ scan_bus(uint bus)
 void
 pci_func_enable(struct pci_dev *dev)
 {
-  pci_config_write(dev->bus, dev->device, dev->function, PCI_STA_CMD, 
+  pci_config_write(dev->bus, dev->device, dev->function, PCI_CMD_STA, 
                    PCI_COMMAND_IO_ENABLE | PCI_COMMAND_MEM_ENABLE | PCI_COMMAND_MASTER_ENABLE);
   __sync_synchronize();
 }
