@@ -8,28 +8,25 @@
 #include "e1000_dev.h"
 
 #define RX_DESC_NUM 16 // to be a multiple of 8
+#define TX_DESC_NUM 8
 #define PACKET_SIZE 2048
 
 static volatile uint32 *regs;
 static uint8 rxbuf[RX_DESC_NUM][PACKET_SIZE];
 static struct rx_desc rx_descs[RX_DESC_NUM] __attribute__((aligned(16)));
+static struct tx_desc tx_descs[TX_DESC_NUM] __attribute__((aligned(16)));
+
+#define E1000_IPGT 8
+#define E1000_IPGR1 8
+#define E1000_IPGR2 6
 
 struct spinlock e1000_lock;
 
-void
-e1000init(struct pci_dev *dev)
+static void
+e1000init_recv(void)
 {
   uint i;
   uint32 status;
-
-  initlock(&e1000_lock, "e1000");
-  pci_func_enable(dev);
-  regs = dev->regs;
-
-  regs[E1000_IMS] = 0; // disable interrupts
-  regs[E1000_CTL] |= E1000_CTL_RST; // reset
-  regs[E1000_IMS] = 0; // redisable interrupts
-  __sync_synchronize();
 
   regs[E1000_CTL] |= E1000_CTL_FD | E1000_CTL_ASDE | E1000_CTL_SLU;
   status = regs[E1000_STATUS] & 0x0FFF;
@@ -58,24 +55,50 @@ e1000init(struct pci_dev *dev)
     E1000_RCTL_BAM |
     E1000_RCTL_SZ_2048 |
     E1000_RCTL_SECRC;
+  printf("E1000: Receive initialized\n");
   
   regs[E1000_RDTR] = 0;
   regs[E1000_RADV] = 0;
-  regs[E1000_IMS] = (1 << 7); // RXDW -- Receiver Descriptor Write Back
+  regs[E1000_IMS] = (1 << 7);
+}
+
+static void
+e1000init_transmit(void)
+{
+  uint i;
+  regs[E1000_TDBAL] = (uint64) tx_descs;
+  regs[E1000_TDLEN] = sizeof(tx_descs);
+  if (sizeof(tx_descs) % 128 != 0) panic("e1000 error");
+  regs[E1000_TDH] = regs[E1000_TDT] = 0;
+
+  for (i = 0; i < TX_DESC_NUM; i++) {
+    tx_descs[i].status = E1000_TXD_STAT_DD;
+  }
+
+  regs[E1000_TCTL] = E1000_TCTL_EN |
+    E1000_TCTL_PSP |
+    (0x10 << E1000_TCTL_CT_SHIFT) |
+    (0x40 << E1000_TCTL_COLD_SHIFT);
+  regs[E1000_TIPG] = E1000_IPGT | (E1000_IPGR1 << 10) | (E1000_IPGR2 << 20); // inter-pkt gap
+  printf("E1000: Transmit initialized\n");
+}
+
+void
+e1000init(struct pci_dev *dev)
+{
+
+  initlock(&e1000_lock, "e1000");
+  pci_func_enable(dev);
+  regs = dev->regs;
+
+  // reset the device
+  regs[E1000_IMS] = 0; // disable interrupts
+  regs[E1000_CTL] |= E1000_CTL_RST;
+  regs[E1000_IMS] = 0; // redisable interrupts
   __sync_synchronize();
 
-  while (1) {
-    for (i = 0; i < RX_DESC_NUM; i++) {
-      if (rx_descs[i].status & E1000_RXD_STAT_DD) {
-        printf("E1000: Received packet %d\n", i);
-        rx_descs[i].status &= ~E1000_RXD_STAT_DD;
-        for (int j = 0; j < rx_descs[i].length; j++) {
-          printf("%x ", rxbuf[i][j]);
-        }
-        printf("\n");
-      }
-    }
-  }
+  e1000init_recv();
+  e1000init_transmit();
 }
 
 // static void
