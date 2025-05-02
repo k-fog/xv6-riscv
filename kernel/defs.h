@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct pci_dev;
 
 // bio.c
 void            binit(void);
@@ -187,6 +188,11 @@ void            virtio_disk_intr(void);
 
 // pci.c
 void            pciinit(void);
+
+// e1000.c
+void            e1000init(struct pci_dev *);
+void            e1000intr(void);
+char            e1000transmit(void *, uint);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

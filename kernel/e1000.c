@@ -22,8 +22,6 @@ static struct tx_desc tx_descs[TX_DESC_NUM] __attribute__((aligned(16)));
 
 struct spinlock e1000_lock;
 
-static char e1000_transmit(void*, uint);
-
 static void
 e1000init_recv(void)
 {
@@ -61,6 +59,9 @@ e1000init_recv(void)
   
   regs[E1000_RDTR] = 0;
   regs[E1000_RADV] = 0;
+
+  regs[E1000_RDTR] = 0; // interrupt after every received packet (no timer)
+  regs[E1000_RADV] = 0; // interrupt after every packet (no timer)
   regs[E1000_IMS] = (1 << 7);
 }
 
@@ -104,16 +105,16 @@ e1000init(struct pci_dev *dev)
 
   uint16 data[] = {0xBEEF, 0xCAFE, 0xDEAD, 0xBEEF};
   uint len = 4 * sizeof(uint16);
-  for (int i = 0; i < 10; i++) e1000_transmit(data, len);
+  for (int i = 0; i < 10; i++) e1000transmit(data, len);
 }
 
 // static void
-// e1000_recv(void)
+// e1000recv(void)
 // {
 // }
 
-static char
-e1000_transmit(void *buf, uint len)
+char
+e1000transmit(void *buf, uint len)
 {
   uint8 status;
   uint32 tail;
@@ -131,4 +132,11 @@ e1000_transmit(void *buf, uint len)
   }
   printf("E1000: Transmit status: 0x%x\n", status);
   return 0;
+}
+
+void
+e1000intr(void)
+{
+  uint32 status = regs[E1000_ICR];
+  printf("E1000: Interrupt status: 0x%x\n", status);
 }

@@ -40,6 +40,7 @@
 // pci mmio space
 #define PCIE_MMIO_BASE 0x40000000UL
 #define PCIE_MMIO_SIZE 0x40000000UL
+#define PCIE_INTB_IRQ 33
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages

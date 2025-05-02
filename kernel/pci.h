@@ -22,5 +22,3 @@ uint32 pci_config_read(uint, uint, uint, uint);
 void pci_config_write(uint, uint, uint, uint, uint32);
 
 void pci_func_enable(struct pci_dev *);
-
-void e1000init(struct pci_dev *dev);
