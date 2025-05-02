@@ -22,6 +22,8 @@ static struct tx_desc tx_descs[TX_DESC_NUM] __attribute__((aligned(16)));
 
 struct spinlock e1000_lock;
 
+static char e1000_transmit(void*, uint);
+
 static void
 e1000init_recv(void)
 {
@@ -99,9 +101,34 @@ e1000init(struct pci_dev *dev)
 
   e1000init_recv();
   e1000init_transmit();
+
+  uint16 data[] = {0xBEEF, 0xCAFE, 0xDEAD, 0xBEEF};
+  uint len = 4 * sizeof(uint16);
+  for (int i = 0; i < 10; i++) e1000_transmit(data, len);
 }
 
 // static void
 // e1000_recv(void)
 // {
 // }
+
+static char
+e1000_transmit(void *buf, uint len)
+{
+  uint8 status;
+  uint32 tail;
+
+  tail = regs[E1000_TDT];
+  tx_descs[tail].addr = (uint64)buf;
+  tx_descs[tail].length = len;
+  tx_descs[tail].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+  regs[E1000_TDT] = (tail + 1) % TX_DESC_NUM;
+  status = 0;
+  while (!status) status = tx_descs[tail].status & 0x0F;
+  if (status != E1000_TXD_STAT_DD) {
+    printf("E1000: Transmit error: 0x%x\n", status);
+    return -1;
+  }
+  printf("E1000: Transmit status: 0x%x\n", status);
+  return 0;
+}

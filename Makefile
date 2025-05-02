@@ -170,6 +170,7 @@ QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS += -device e1000,netdev=net0 -netdev user,id=net0,hostfwd=tcp::10080-:80
+QEMUOPTS += -object filter-dump,id=net0,netdev=net0,file=net0.dump
 
 qemu: $K/kernel fs.img
 	$(QEMU) $(QEMUOPTS)
