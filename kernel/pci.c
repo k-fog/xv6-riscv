@@ -45,22 +45,6 @@ pci_config_write(uint bus, uint device, uint function, uint offset, uint32 value
   *addr = value;
 }
 
-static void
-list_dev()
-{
-  uint i;
-  for (i = 0; i < num_pci_devs; i++) {
-    printf("PCI: Bus %d Device %d Function %d Vendor ID 0x%x Device ID 0x%x Class Code 0x%x (%s)\n",
-           pci_devices[i].bus,
-           pci_devices[i].device,
-           pci_devices[i].function,
-           pci_devices[i].vendor_id,
-           pci_devices[i].device_id,
-           pci_devices[i].class_code,
-           (pci_devices[i].class_code < NPCI_CLASSES) ? pci_class[pci_devices[i].class_code] : "Unknown");
-  }
-}
-
 static uint32
 get_viddid(uint bus, uint device, uint function)
 {
@@ -114,12 +98,22 @@ scan_bus(uint bus)
       dev->class_code = get_classcode(bus, device, function);
       
       info = lookup_dev_info(vendor_id, device_id);
+
+      printf("PCI: Bus %d Device %d Function %d Vendor ID 0x%x Device ID 0x%x Class Code 0x%x (%s)\n",
+            dev->bus,
+            dev->device,
+            dev->function,
+            dev->vendor_id,
+            dev->device_id,
+            dev->class_code,
+            (dev->class_code < NPCI_CLASSES) ? pci_class[dev->class_code] : "Unknown");
+
       if (info != 0) {
         pci_config_write(bus, device, function, PCI_BAR0, PCIE_MMIO_BASE);
         dev->regs = (volatile uint32 *) PCIE_MMIO_BASE;
         info->init(dev);
       }
-
+      
       num_pci_devs++;
 
       if (NPCIDEV <= num_pci_devs) {
@@ -142,5 +136,4 @@ void
 pciinit(void)
 {
   scan_bus(0);
-  list_dev();
 }
